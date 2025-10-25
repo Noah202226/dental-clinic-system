@@ -1,65 +1,144 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect } from "react";
+
+// --- Client Component for PWA Status and Install Button ---
+const PWAStatus = () => {
+  const [isOnline, setIsOnline] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  // *** Service Worker Registration Logic ***
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      // The Service Worker file is generated as sw.js in the public directory
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log(
+            "Service Worker registration successful with scope: ",
+            registration.scope
+          );
+        })
+        .catch((error) => {
+          console.error("Service Worker registration failed: ", error);
+        });
+    }
+  }, []);
+  // *****************************************
+
+  useEffect(() => {
+    // Handle online/offline status
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Handle the beforeinstallprompt event for PWA installation
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevents the default browser install prompt from showing up immediately
+      e.preventDefault();
+      // Store the event so it can be triggered later.
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      // The deferredPrompt object has a .prompt() method
+      deferredPrompt.prompt();
+
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+
+      if (outcome === "accepted") {
+        console.log("User accepted the PWA install prompt.");
+      } else {
+        console.log("User dismissed the PWA install prompt.");
+      }
+
+      // Clear the prompt event
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="p-4 rounded-lg shadow-xl bg-white/90 backdrop-blur-sm">
+      <div className="flex items-center space-x-2 mb-4">
+        <div
+          className={`w-3 h-3 rounded-full ${
+            isOnline ? "bg-green-500" : "bg-red-500"
+          } animate-pulse`}
+        ></div>
+        <p
+          className={`font-semibold text-sm ${
+            isOnline ? "text-green-700" : "text-red-700"
+          }`}
+        >
+          Status: {isOnline ? "Online" : "Offline (Cached Data)"}
+        </p>
+      </div>
+
+      {isInstallable && (
+        <button
+          onClick={handleInstallClick}
+          className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md"
+        >
+          Install App to Home Screen
+        </button>
+      )}
+
+      {!isInstallable && (
+        <p className="text-sm text-gray-500 mt-2">
+          This app is PWA-ready! Try building and running in production mode to
+          see the install prompt.
+        </p>
+      )}
     </div>
+  );
+};
+
+// --- Main Server Component ---
+export default function HomePage() {
+  return (
+    <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6 text-center border-t-4 border-teal-500">
+        <h1 className="text-4xl font-extrabold text-gray-800 mb-2">
+          PWA Ready!
+        </h1>
+        <p className="text-lg text-gray-500 mb-6">
+          Next.js 15 App Router & Tailwind CSS
+        </p>
+
+        <PWAStatus />
+
+        <section className="mt-8 text-left space-y-3">
+          <h2 className="text-xl font-semibold text-gray-700 border-b pb-1 mb-2">
+            PWA Checklist:
+          </h2>
+          <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+            <li>✅ Web Manifest (`/public/manifest.json`)</li>
+            <li>✅ Service Worker (Auto-generated by `next-pwa` on build)</li>
+            <li>✅ HTTPS or Localhost (Required for installation)</li>
+            <li>✅ Metadata linked in `layout.jsx`</li>
+            <li>✅ Install Button Logic (Above)</li>
+          </ul>
+        </section>
+      </div>
+    </main>
   );
 }

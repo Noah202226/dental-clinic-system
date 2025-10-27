@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import React, { useState, useEffect } from "react";
 
 // --- Client Component for PWA Status and Install Button ---
@@ -125,6 +126,8 @@ export default function HomePage() {
         </p>
 
         <PWAStatus />
+
+        <Button>SHADCN BUTTON</Button>
 
         <section className="mt-8 text-left space-y-3">
           <h2 className="text-xl font-semibold text-gray-700 border-b pb-1 mb-2">

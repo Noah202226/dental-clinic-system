@@ -1,147 +1,55 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { Card } from "@/components/ui/card";
+import useClinicStore from "@/app/stores/useClinicStore";
+import SidebarNav from "./components/SidebarNav";
+import PatientList from "./components/PatientList";
+import PatientDetail from "./components/PatientDetail";
 
-// --- Client Component for PWA Status and Install Button ---
-const PWAStatus = () => {
-  const [isOnline, setIsOnline] = useState(true);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstallable, setIsInstallable] = useState(false);
-
-  // *** Service Worker Registration Logic ***
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      // The Service Worker file is generated as sw.js in the public directory
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((registration) => {
-          console.log(
-            "Service Worker registration successful with scope: ",
-            registration.scope
-          );
-        })
-        .catch((error) => {
-          console.error("Service Worker registration failed: ", error);
-        });
-    }
-  }, []);
-  // *****************************************
-
-  useEffect(() => {
-    // Handle online/offline status
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    // Handle the beforeinstallprompt event for PWA installation
-    const handleBeforeInstallPrompt = (e) => {
-      // Prevents the default browser install prompt from showing up immediately
-      e.preventDefault();
-      // Store the event so it can be triggered later.
-      setDeferredPrompt(e);
-      setIsInstallable(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt
-      );
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      // The deferredPrompt object has a .prompt() method
-      deferredPrompt.prompt();
-
-      // Wait for the user to respond to the prompt
-      const { outcome } = await deferredPrompt.userChoice;
-
-      if (outcome === "accepted") {
-        console.log("User accepted the PWA install prompt.");
-      } else {
-        console.log("User dismissed the PWA install prompt.");
-      }
-
-      // Clear the prompt event
-      setDeferredPrompt(null);
-      setIsInstallable(false);
-    }
-  };
-
-  return (
-    <div className="p-4 rounded-lg shadow-xl bg-white/90 backdrop-blur-sm">
-      <div className="flex items-center space-x-2 mb-4">
-        <div
-          className={`w-3 h-3 rounded-full ${
-            isOnline ? "bg-green-500" : "bg-red-500"
-          } animate-pulse`}
-        ></div>
-        <p
-          className={`font-semibold text-sm ${
-            isOnline ? "text-green-700" : "text-red-700"
-          }`}
-        >
-          Status: {isOnline ? "Online" : "Offline (Cached Data)"}
-        </p>
-      </div>
-
-      {isInstallable && (
-        <button
-          onClick={handleInstallClick}
-          className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md"
-        >
-          Install App to Home Screen
-        </button>
-      )}
-
-      {!isInstallable && (
-        <p className="text-sm text-gray-500 mt-2">
-          This app is PWA-ready! Try building and running in production mode to
-          see the install prompt.
-        </p>
-      )}
-    </div>
-  );
-};
-
-// --- Main Server Component ---
 export default function HomePage() {
+  const selectedPatient = useClinicStore((state) => state.selectedPatient);
+
   return (
-    <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6 text-center border-t-4 border-teal-500">
-        <h1 className="text-4xl font-extrabold text-gray-800 mb-2">
-          PWA Ready!
-        </h1>
-        <p className="text-lg text-gray-500 mb-6">
-          Next.js 15 App Router & Tailwind CSS
-        </p>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* SIDEBAR */}
+      <SidebarNav />
 
-        <PWAStatus />
-
-        <Button>SHADCN BUTTON</Button>
-
-        <section className="mt-8 text-left space-y-3">
-          <h2 className="text-xl font-semibold text-gray-700 border-b pb-1 mb-2">
-            PWA Checklist:
+      {/* MAIN */}
+      <main className="flex-1 overflow-auto p-4 md:p-8">
+        <header className="mb-6">
+          <h2 className="text-3xl font-extrabold text-gray-800">
+            Patient Management
           </h2>
-          <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-            <li>✅ Web Manifest (`/public/manifest.json`)</li>
-            <li>✅ Service Worker (Auto-generated by `next-pwa` on build)</li>
-            <li>✅ HTTPS or Localhost (Required for installation)</li>
-            <li>✅ Metadata linked in `layout.jsx`</li>
-            <li>✅ Install Button Logic (Above)</li>
-          </ul>
-        </section>
-      </div>
-    </main>
+          <p className="text-gray-500">
+            Manage patient records and clinical activity.
+          </p>
+        </header>
+
+        <Card className="h-[90%] p-0 overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-3 h-full">
+            {/* LEFT: Patient List */}
+            <div className="md:col-span-1 border-r overflow-y-auto p-6">
+              <PatientList />
+            </div>
+
+            {/* RIGHT: Detail (occupies 2 cols on md+) */}
+            <div className="md:col-span-2 overflow-y-auto p-6">
+              {/* when no patient is selected we show a friendly placeholder */}
+              {selectedPatient ? (
+                <PatientDetail />
+              ) : (
+                <div className="h-full flex flex-col justify-center items-center text-gray-400">
+                  <p className="text-lg font-medium">No patient selected</p>
+                  <p className="mt-2">
+                    Select a patient from the left to view details.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </main>
+    </div>
   );
 }
